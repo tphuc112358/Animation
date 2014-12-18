@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Breakout</title>
+    <meta name="description" content="" />
+    <meta name="author" content="lassehav" />
+    <style rel="stylesheet">
+    body {
+        width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    </style>
+    <script src="Map.js"></script>
+    <script src="collision.js"></script>
+    <script type="text/javascript">  
+
+    //****************************************
+    //  Game Object  
+    //****************************************    
+    function Game(canvasElement)
+    {
+        //0: game are still played
+        //1: player win ; -1: player lose
+
+        this.result = 0;
+        this.gc = canvasElement.getContext("2d");        
+        this.gc.font = "30px Arial";
+
+        this.width = canvasElement.getAttribute("width");        
+        this.height = canvasElement.getAttribute("height");;
+        this.blockWidth = 50;
+        this.blockHeight = 25;
+
+        // Create the club object 
+        this.theClub = new Club(this.width /2, this.height - 40, this.blockWidth * 2, this.blockHeight / 2);
+
+        // Create the ball object and place it to the bottom half of the canvas
+        // Set also the initial speed with the constructor
+        ballStartPosX = this.width / 2;
+        ballStartPosY = this.height - this.height / 8 -20;
+        this.theBall = new Ball(5, ballStartPosX, ballStartPosY);
+        
+        // Create the map
+        this.theMap = new Map(this.width, this.height, this.blockWidth, this.blockHeight);
+        
+        //render the canvas
+        this.render();
+
+    }
+    
+    Game.prototype.update = function ()
+    {
+
+        // Execute the update function for the player controlled club
+        this.theClub.update();
+
+        // Execute the update function for the ball
+        this.theBall.update();			
+
+        // Execute the update function for the map
+        this.theMap.update();
+
+
+    }
+
+    Game.prototype.render = function ()
+    {
+        // Clear the canvas 
+        this.gc.clearRect(0, 0, this.width, this.height);		
+        
+        
+        // Draw the ball 
+        this.theBall.draw(this.gc);
+
+        // Draw the club
+        this.theClub.draw(this.gc);	   
+
+        // Draw the map
+        this.theMap.draw(this.gc);
+    }
+
+
+    Game.prototype.gameLoop = function()
+    {   
+        //check the result
+        if (this.result !==0)  {
+
+            this.gc.fillStyle="#F341A3";
+            this.gc.font="bold 50px Arial";            
+            if (this.result == 1) {//player wins
+                this.gc.fillText("You Win",180,90);
+            } else {//player lose
+                this.gc.fillText("You Lose",180,90);
+            }
+            return;
+        };
+        // Request a new animation frame from the browser. 
+        // Note the use of ECMAScript5 bind() to allow object method to be passed as a callback
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/bind
+        requestAnimFrame(this.gameLoop.bind(this));
+
+        
+        
+        // Render everything on the canvas since all positions have just been updated
+        this.render();
+
+        // Execute the update phase of the animation loop
+        this.update();		
+        
+
+
+    }
+
+    Game.prototype.start = function()
+    {
+
+        this.gameLoop();   
+    }
+
+    Game.prototype.keyDown = function(event)
+    {
+        switch (event.keyCode)
+        {
+            case 37:  /* Left arrow was pressed */
+            this.theClub.move("LEFT");
+            break;
+            case 39:  /* Right arrow was pressed */
+            this.theClub.move("RIGHT");
+            break;
+        }
+    }
+    
+    Game.prototype.keyUp = function(event)
+    {
+        switch (event.keyCode)
+        {
+            case 37:  /* Left arrow was pressed */
+            case 39:  /* Right arrow was pressed */
+            this.theClub.move("NONE");
+            break;
+        }   
+    }
+
+    
+    
+    //****************************************
+    //  Club Object  
+    //****************************************  
+    //initialize the club
+    function Club(centerPosX, centerPosY, width, height)
+    {        
+        this.x = centerPosX - width / 2;
+        this.y = centerPosY - 40;
+        this.width = width; 
+        this.height = height; 
+        this.moveDir = "NONE";	
+
+    }
+    
+    // Define the draw function for the club class
+    Club.prototype.draw = function(canvas)
+    {
+        canvas.beginPath();
+        canvas.rect(this.x, this.y, this.width, this.height);
+        canvas.fillStyle = "blue";
+        canvas.fill();
+        canvas.strokeStyle = "gray";
+        canvas.stroke();
+        canvas.closePath(); 
+    }
+    
+    // Define the move function for the club class
+    Club.prototype.move = function(amount)
+    {
+        this.moveDir = amount;  		  	
+    }
+    
+    // Define the update function for the club class
+    Club.prototype.update = function()
+    {
+        //this.vx and this.vy is the velocity of the club
+        if(this.moveDir == "LEFT")
+        {
+            this.vx = -7;  			
+        }
+        else if(this.moveDir == "RIGHT")
+        {
+            this.vx = +7;
+        }
+        else {
+            this.vx = 0;
+        }
+        this.x += this.vx; //increase position based on velocity
+
+        //when the club meets the wall
+        if (this.x<0) this.x = 0;
+        if (this.x+this.width>game.width) this.x = game.width-this.width;
+
+
+        //when the ball hit the club from the above
+        if ( ( (game.theBall.y+game.theBall.vy-game.theBall.radius<=this.y+this.height) && (game.theBall.y-game.theBall.radius>=this.y+this.height) ) // hit from below the club
+            || ( (game.theBall.y+game.theBall.vy+game.theBall.radius>=this.y) && (game.theBall.y+game.theBall.radius<= this.y) ) ) //hit from above the club
+        {
+                if (game.theBall.x+game.theBall.vx+game.theBall.radius>=this.x && game.theBall.x+game.theBall.vx-game.theBall.radius<=this.x+this.width) {//checking the x position to check whether the ball and the club hit or not
+
+                    game.theBall.vy = -game.theBall.vy;          //turn back the y velocity
+                    game.theBall.vx += this.vx/4;               //the x velocity of the ball is affected by player's club velocity
+                    game.theBall.vy=(game.theBall.vy/Math.abs(game.theBall.vy))*Math.sqrt(Math.abs(game.theBall.v - game.theBall.vx*game.theBall.vx));                      //keeping the magnitude of the ball the same
+                    return;
+                }
+            }
+
+        //When the ball hit from left or right
+        if ( ( (game.theBall.x+game.theBall.vx+game.theBall.radius>=this.x) && (game.theBall.x+game.theBall.radius<=this.x))
+            || ( (game.theBall.x+game.theBall.vx-game.theBall.radius<=this.x+this.width) && (game.theBall.x-game.theBall.radius>=this.x+this.width) ) ){
+            if ( (game.theBall.y+game.theBall.vy-game.theBall.radius<= this.y+this.height)&&(game.theBall.y+game.theBall.vy+game.theBall.radius>=this.y) ){
+
+                game.theBall.vx = -game.theBall.vx ;//turn back the x velocity
+
+
+            }        
+        }
+    }
+
+    //****************************************
+    //  Ball Object  
+    //****************************************  
+    //initialize ball object
+    function Ball(speed, startPosX, startPosY)
+    {
+        this.x = startPosX;
+        this.y = startPosY;
+        this.vy = -5;
+        this.vx =  4;
+        this.radius = 8;        
+        this.speed = 1;
+        this.v = (this.vx*this.vx+this.vy*this.vy);
+        //the square magnitude of velocity of the ball
+    }
+
+    // Define the draw function for the ball class
+    Ball.prototype.draw = function(canvas)
+    {
+        canvas.beginPath();
+        canvas.arc(this.x, this.y, this.radius, 0, 2 * Math.PI, false);
+        canvas.fillStyle = "rgb(130,130,130)";
+        canvas.fill();
+        canvas.strokeStyle = "white";
+        canvas.stroke();
+        canvas.closePath();         
+    }
+    //Checking when the ball hit the wall
+    Ball.prototype.checkWallHits = function()
+    {
+        //top wall
+        if (this.y+this.vy-this.radius<0) {
+            this.vy = -this.vy;
+        }
+        //left and right wall
+        if (this.x+this.vx-this.radius<0 || this.x+this.vx+this.radius>game.width) {
+            this.vx = -this.vx;
+        }
+        //when the player miss the ball. Game over
+        if (this.y+this.vy+this.radius>game.height) {
+            game.result = -1;
+
+        }
+
+    }   
+
+    Ball.prototype.update = function()
+    {
+
+        // Check if the end of the screen is reached - eg. ball missed the club
+        if(this.y >= Game.height)
+        {           
+            this.vy = 0;
+            this.vx = 0;            
+        }
+
+
+        // Check if the ball hits an edge wall
+        this.checkWallHits();        
+
+        // Update the ball position 
+        this.x += this.vx * this.speed;
+        this.y += this.vy * this.speed;
+
+        //keeping the magnitude the same
+        if (Math.abs(this.vx*this.vx+this.vy*this.vy-this.v)>0.001) {
+            this.vx=(this.vx/Math.abs(this.vx))*Math.sqrt(this.v-this.vy*this.vy);
+        }
+
+    }
+
+
+    /* Set the requestAnimFrame function to use the correct function per the browser. 
+    If the browser is not supporting requestAnimationFrame function at all, then the backup
+    is to use regular timer to achieve more or less the same. */
+    window.requestAnimFrame = (function(){
+        return  window.requestAnimationFrame       || 
+        window.webkitRequestAnimationFrame || 
+        window.mozRequestAnimationFrame    || 
+        window.oRequestAnimationFrame      || 
+        window.msRequestAnimationFrame     || 
+        function( callback ){
+            window.setTimeout(callback, 1000 / 60);
+        };
+    })();        
+
+    var game = null;
+    function start()
+    {
+        // Create the game object
+        game = new Game(document.getElementById("canvasTarget"));
+        window.addEventListener('keydown', function (event) { game.keyDown(event); });
+        window.addEventListener('keyup', function (event) { game.keyUp(event); });
+
+        // Start the game
+        game.start();
+
+    }
+
+
+    </script>
+
+</head>
+
+<body id="mainbody" onload="start()">
+    <header>
+        <h2>HTML5 Breakout Game</h2>
+        <canvas id="canvasTarget" width="500" height="600" style="border: 1px solid black; background-color: black;"></canvas>	
+    </header>
+</body>
+</html>
